@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ぷよぷよ風ゲーム</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 1px solid black;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #score {
+            margin-top: 10px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="402" height="652"></canvas>
+    <div id="score">Score: 0</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const COLS = 6;
+    const ROWS = 13;
+    const BLOCK_SIZE = 50;
+    const COLORS = ['red', 'yellow', 'blue', 'green'];
+
+    let currentPuyo;
+    let nextPuyo;
+    let grid;
+    let gameOver = false;
+    let blinkCount = 0;
+    let score = 0;
+    let chainCount = 0;
+    let isBlinking = false;
+    let isGameOverAnimation = false;
+    let gameOverAnimationRow = ROWS - 1;
+
+    class Puyo {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.isMatched = false;
+        this.isBlinking = false;
+        this.isGray = false;
+      }
+
+      draw(offsetX = 0, offsetY = 0) {
+        ctx.fillStyle = this.isGray ? 'gray' : (this.isBlinking ? (blinkCount % 2 === 0 ? 'white' : this.color) : this.color);
+        ctx.beginPath();
+        ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 2, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 2, BLOCK_SIZE / 2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (!this.isGray) {
+          ctx.fillStyle = 'black';
+          ctx.beginPath();
+          if (this.isBlinking) {
+            // びっくりした表情（二重丸の目）
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 7, 0, Math.PI * 2);
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE * 2 / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 7, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 14, 0, Math.PI * 2);
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE * 2 / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 14, 0, Math.PI * 2);
+          } else {
+            // 通常の表情
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 10, 0, Math.PI * 2);
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE * 2 / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 10, 0, Math.PI * 2);
+          }
+          ctx.fill();
+        }
+      }
+    }
+
+    class PuyoPair {
+      constructor() {
+        const centerX = Math.floor(COLS / 2) - 1;
+        this.puyos = [
+          new Puyo(centerX, -1, COLORS[Math.floor(Math.random() * COLORS.length)]),
+          new Puyo(centerX, 0, COLORS[Math.floor(Math.random() * COLORS.length)])
+        ];
+        this.rotation = 0;
+      }
+
+      draw(offsetX = 0, offsetY = 0) {
+        this.puyos.forEach(puyo => puyo.draw(offsetX, offsetY));
+      }
+
+      moveDown() {
+        if (this.canMove(0, 1)) {
+          this.puyos.forEach(puyo => puyo.y++);
+          return true;
+        } else {
+          this.lock();
+          return false;
+        }
+      }
+
+      moveLeft() {
+        if (this.canMove(-1, 0)) {
+          this.puyos.forEach(puyo => puyo.x--);
+        }
+      }
+
+      moveRight() {
+        if (this.canMove(1, 0)) {
+          this.puyos.forEach(puyo => puyo.x++);
+        }
+      }
+
+      rotate() {
+        const [p1, p2] = this.puyos;
+        let newX = p1.x - (p2.y - p1.y);
+        let newY = p1.y + (p2.x - p1.x);
+
+        if (newX < 0) {
+          newX = 0;
+          this.puyos.forEach(puyo => puyo.x++);
+        } else if (newX >= COLS) {
+          newX = COLS - 1;
+          this.puyos.forEach(puyo => puyo.x--);
+        }
+
+        if (newY >= ROWS) newY = ROWS - 1;
+
+        if (!grid[newY][newX]) {
+          p2.x = newX;
+          p2.y = newY;
+          this.rotation = (this.rotation + 1) % 4;
+        }
+      }
+
+      canMove(dx, dy) {
+        return this.puyos.every(puyo => {
+          const newX = puyo.x + dx;
+          const newY = puyo.y + dy;
+          return newX >= 0 && newX < COLS && newY < ROWS && (newY < 0 || !grid[newY][newX]);
+        });
+      }
+
+      lock() {
+        this.puyos.forEach(puyo => {
+          if (puyo.y >= 0) {
+            grid[puyo.y][puyo.x] = puyo;
+          } else {
+            gameOver = true;
+          }
+        });
+        if (!gameOver) {
+          applyGravity();
+          chainCount = 0;
+          checkMatches();
+        } else {
+          startGameOverAnimation();
+        }
+      }
+    }
+
+    function initGrid() {
+      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    }
+
+    function initPuyos() {
+      const centerX = Math.floor(COLS / 2) - 1;
+      currentPuyo = new PuyoPair();
+      nextPuyo = new PuyoPair();
+      currentPuyo.puyos.forEach(puyo => {
+        puyo.x = centerX;
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // ネクストぷよの背景を描画
+      ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+      ctx.fillRect(0, 0, BLOCK_SIZE * 2, canvas.height);
+
+      // ネクストぷよを描画
+      ctx.fillStyle = 'black';
+      ctx.font = '16px Arial';
+      ctx.fillText('Next:', 10, 30);
+      nextPuyo.puyos[0].x = 0;
+      nextPuyo.puyos[0].y = 1;
+      nextPuyo.puyos[1].x = 0;
+      nextPuyo.puyos[1].y = 2;
+      nextPuyo.draw(0, 0);
+
+      // メインのぷよと盤面を描画
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (grid[y][x]) {
+            grid[y][x].draw(2, 0);
+          }
+        }
+      }
+      currentPuyo.draw(2, 0);
+
+      // スコアを更新
+      document.getElementById('score').textContent = `Score: ${score}`;
+
+      if (isGameOverAnimation) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(BLOCK_SIZE * 2, 0, BLOCK_SIZE * COLS, BLOCK_SIZE * ROWS);
+        ctx.fillStyle = 'white';
+        ctx.font = '30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
+        ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 40);
+        ctx.fillText(`Press "f5" to ReStart`, canvas.width / 2, canvas.height / 2 + 80);
+      }
+    }
+
+    function applyGravity() {
+      for (let x = 0; x < COLS; x++) {
+        let spaces = 0;
+        for (let y = ROWS - 1; y >= 0; y--) {
+          if (!grid[y][x]) {
+            spaces++;
+          } else if (spaces > 0) {
+            grid[y + spaces][x] = grid[y][x];
+            grid[y + spaces][x].y += spaces;
+            grid[y][x] = null;
+          }
+        }
+      }
+    }
+
+    function checkMatches() {
+      let matched = false;
+      const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (grid[y][x] && !visited[y][x]) {
+            const matchedPuyos = findConnectedPuyos(x, y, grid[y][x].color);
+            if (matchedPuyos.length >= 4) {
+              matched = true;
+              matchedPuyos.forEach(([px, py]) => {
+                grid[py][px].isMatched = true;
+                grid[py][px].isBlinking = true;
+              });
+              updateScore(matchedPuyos.length);
+            }
+          }
+        }
+      }
+
+      if (matched) {
+        chainCount++;
+        isBlinking = true;
+        blinkAndRemove();
+      } else {
+        currentPuyo = nextPuyo;
+        nextPuyo = new PuyoPair();
+        // 新しい PuyoPair を中央に配置
+        const centerX = Math.floor(COLS / 2) - 1;
+        currentPuyo.puyos.forEach(puyo => {
+          puyo.x = centerX;
+        });
+        isBlinking = false;
+        if (isGameOver()) {
+          gameOver = true;
+          startGameOverAnimation();
+        }
+      }
+    }
+
+    function updateScore(puyoCount) {
+      const baseScore = puyoCount * 10;
+      const chainBonus = chainCount * 50;
+      score += baseScore + chainBonus;
+    }
+
+    function blinkAndRemove() {
+      let blinkInterval = setInterval(() => {
+        blinkCount++;
+        draw();
+        if (blinkCount >= 6) {
+          clearInterval(blinkInterval);
+          removeMatchedPuyos();
+          applyGravity();
+          checkMatches();
+          blinkCount = 0;
+        }
+      }, 100);
+    }
+
+    function findConnectedPuyos(x, y, color) {
+      const stack = [[x, y]];
+      const connected = [];
+      const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+
+      while (stack.length > 0) {
+        const [cx, cy] = stack.pop();
+        if (cx < 0 || cx >= COLS || cy < 0 || cy >= ROWS || visited[cy][cx] || !grid[cy][cx] || grid[cy][cx].color !== color) {
+          continue;
+        }
+
+        visited[cy][cx] = true;
+        connected.push([cx, cy]);
+
+        stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+      }
+
+      return connected;
+    }
+
+    function removeMatchedPuyos() {
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (grid[y][x] && grid[y][x].isMatched) {
+            grid[y][x] = null;
+          }
+        }
+      }
+    }
+
+    function isGameOver() {
+      return currentPuyo.puyos.some(puyo => grid[puyo.y][puyo.x] !== null);
+    }
+
+    function startGameOverAnimation() {
+      isGameOverAnimation = true;
+      gameOverAnimationRow = ROWS - 1;
+      animateGameOver();
+    }
+
+    function animateGameOver() {
+      if (gameOverAnimationRow >= 0) {
+        for (let x = 0; x < COLS; x++) {
+          if (grid[gameOverAnimationRow][x]) {
+            grid[gameOverAnimationRow][x].isGray = true;
+          }
+        }
+        gameOverAnimationRow--;
+        draw();
+        setTimeout(animateGameOver, 100);
+      } else {
+        draw(); // 最終的な描画
+      }
+    }
+
+    function gameLoop() {
+      if (!gameOver && !isBlinking && !isGameOverAnimation) {
+        if (!currentPuyo.moveDown()) {
+          if (gameOver) {
+            startGameOverAnimation();
+          }
+        }
+      }
+      draw();
+    }
+
+    document.addEventListener('keydown', event => {
+      if (!gameOver && !isBlinking && !isGameOverAnimation) {
+        switch (event.keyCode) {
+          case 37: // 左矢印
+            currentPuyo.moveLeft();
+            break;
+          case 39: // 右矢印
+            currentPuyo.moveRight();
+            break;
+          case 40: // 下矢印
+            currentPuyo.moveDown();
+            break;
+          case 32: // スペースキー
+            currentPuyo.rotate();
+            break;
+        }
+        draw();
+      }
+    });
+
+    initGrid();
+    currentPuyo = new PuyoPair();
+    nextPuyo = new PuyoPair();
+    setInterval(gameLoop, 1000);
+  });
+</script>
+</body>
+</html>
