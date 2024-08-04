@@ -390,6 +390,53 @@
     currentPuyo = new PuyoPair();
     nextPuyo = new PuyoPair();
     setInterval(gameLoop, 1000);
+      // タッチイベントの設定
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+canvas.addEventListener('touchstart', function(event) {
+  touchStartX = event.touches[0].clientX;
+  touchStartY = event.touches[0].clientY;
+}, false);
+
+canvas.addEventListener('touchend', function(event) {
+  touchEndX = event.changedTouches[0].clientX;
+  touchEndY = event.changedTouches[0].clientY;
+  handleTouch();
+}, false);
+
+function handleTouch() {
+  const diffX = touchEndX - touchStartX;
+  const diffY = touchEndY - touchStartY;
+  const absDiffX = Math.abs(diffX);
+  const absDiffY = Math.abs(diffY);
+
+  if (!gameOver && !isBlinking && !isGameOverAnimation) {
+    if (absDiffX < 10 && absDiffY < 10) {
+      // タップ（回転）
+      currentPuyo.rotate();
+    } else if (absDiffX > absDiffY) {
+      if (diffX > 0) {
+        // 右フリック
+        currentPuyo.moveRight();
+      } else {
+        // 左フリック
+        currentPuyo.moveLeft();
+      }
+    } else if (absDiffY > absDiffX && diffY > 0) {
+      // 下フリック（落下速度アップ）
+      while (currentPuyo.moveDown()) {}
+    }
+    draw();
+  }
+}
+
+// タッチによるスクロールを防止
+document.body.addEventListener('touchmove', function(event) {
+  event.preventDefault();
+}, { passive: false });
   });
 </script>
 </body>
