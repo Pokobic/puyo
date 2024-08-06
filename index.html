@@ -31,6 +31,9 @@
     <div id="score">Score: 0</div>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    const initialSpeed = 1000; // ミリ秒単位の初期落下速度
+    let currentSpeed = initialSpeed;
+    let speedMultiplier = 1;
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const COLS = 6;
@@ -169,7 +172,13 @@
         }
       }
     }
-
+      
+    function updateSpeed() {
+      const speedLevel = Math.floor(score / 5000);
+      speedMultiplier = Math.pow(1.2, speedLevel);
+      currentSpeed = initialSpeed / speedMultiplier;
+    }
+      
     function initGrid() {
       grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     }
@@ -221,7 +230,7 @@
         ctx.textAlign = 'center';
         ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
         ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 40);
-        ctx.fillText(`Press "f5" to ReStart`, canvas.width / 2, canvas.height / 2 + 80);
+        ctx.fillText(`Screen Reflesh to ReStart`, canvas.width / 2, canvas.height / 2 + 80);
       }
     }
 
@@ -284,6 +293,8 @@
       const baseScore = puyoCount * 10;
       const chainBonus = chainCount * 50;
       score += baseScore + chainBonus;
+      updateSpeed();
+      document.getElementById('score').textContent = `Score: ${score}`;
     }
 
     function blinkAndRemove() {
@@ -364,6 +375,7 @@
         }
       }
       draw();
+      setTimeout(gameLoop, currentSpeed);
     }
 
     document.addEventListener('keydown', event => {
@@ -386,10 +398,10 @@
       }
     });
 
-    initGrid();
-    currentPuyo = new PuyoPair();
-    nextPuyo = new PuyoPair();
-    setInterval(gameLoop, 1000);
+initGrid();
+currentPuyo = new PuyoPair();
+nextPuyo = new PuyoPair();
+setTimeout(gameLoop, currentSpeed);
       // タッチイベントの設定
 let touchStartX = 0;
 let touchStartY = 0;
