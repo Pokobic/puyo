@@ -50,9 +50,9 @@ canvas {
     const ctx = canvas.getContext('2d');
     const COLS = 6;
     const ROWS = 13;
+    const BLOCK_SIZE = 45;
     const COLORS = ['red', 'yellow', 'blue', 'green'];
-    
-    let BLOCK_SIZE;
+
     let currentPuyo;
     let nextPuyo;
     let grid;
@@ -74,42 +74,42 @@ canvas {
         this.isGray = false;
       }
 
-     draw(offsetX = 0, offsetY = 0) {
-    ctx.fillStyle = this.isGray ? 'gray' : (this.isBlinking ? (blinkCount % 2 === 0 ? 'white' : this.color) : this.color);
-    ctx.beginPath();
-    ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 2, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 2, BLOCK_SIZE / 2 - 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (!this.isGray) {
-      ctx.fillStyle = 'black';  // 目の色を常に黒に設定
-      ctx.beginPath();
-      if (this.isBlinking) {
-        // びっくりした表情（二重丸の目）
-        ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 7, 0, Math.PI * 2);
-        ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE * 2 / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 7, 0, Math.PI * 2);
-        ctx.fill();  // 塗りつぶしを行う
+      draw(offsetX = 0, offsetY = 0) {
+        ctx.fillStyle = this.isGray ? 'gray' : (this.isBlinking ? (blinkCount % 2 === 0 ? 'white' : this.color) : this.color);
         ctx.beginPath();
-        ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 14, 0, Math.PI * 2);
-        ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE * 2 / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 14, 0, Math.PI * 2);
-      } else {
-        // 通常の表情
-        ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 10, 0, Math.PI * 2);
-        ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE * 2 / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 10, 0, Math.PI * 2);
+        ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 2, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 2, BLOCK_SIZE / 2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (!this.isGray) {
+          ctx.fillStyle = 'black';
+          ctx.beginPath();
+          if (this.isBlinking) {
+            // びっくりした表情（二重丸の目）
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 7, 0, Math.PI * 2);
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE * 2 / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 7, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 14, 0, Math.PI * 2);
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE * 2 / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 14, 0, Math.PI * 2);
+          } else {
+            // 通常の表情
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 10, 0, Math.PI * 2);
+            ctx.arc((this.x + offsetX) * BLOCK_SIZE + BLOCK_SIZE * 2 / 3, (this.y + offsetY) * BLOCK_SIZE + BLOCK_SIZE / 3, BLOCK_SIZE / 10, 0, Math.PI * 2);
+          }
+          ctx.fill();
+        }
       }
-      ctx.fill();  // 塗りつぶしを行う
     }
-  }
-}
 
     class PuyoPair {
-constructor() {
-  const centerX = Math.floor(COLS / 2) - 1;
-  this.puyos = [
-    new Puyo(centerX, -1, COLORS[Math.floor(Math.random() * COLORS.length)]),
-    new Puyo(centerX, 0, COLORS[Math.floor(Math.random() * COLORS.length)])
-  ];
-  this.rotation = 0;
-}
+      constructor() {
+        const centerX = Math.floor(COLS / 2) - 1;
+        this.puyos = [
+          new Puyo(centerX, -1, COLORS[Math.floor(Math.random() * COLORS.length)]),
+          new Puyo(centerX, 0, COLORS[Math.floor(Math.random() * COLORS.length)])
+        ];
+        this.rotation = 0;
+      }
 
       draw(offsetX = 0, offsetY = 0) {
         this.puyos.forEach(puyo => puyo.draw(offsetX, offsetY));
@@ -194,24 +194,7 @@ constructor() {
     function initGrid() {
       grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     }
-function initGame() {
-  const canvas = document.getElementById('gameCanvas');
-  BLOCK_SIZE = canvas.width / COLS;
 
-  initGrid();
-  currentPuyo = new PuyoPair();
-  nextPuyo = new PuyoPair();
-  
-  gameOver = false;
-  score = 0;
-  chainCount = 0;
-  isBlinking = false;
-  isGameOverAnimation = false;
-  updateSpeed();
-
-  // ゲームループの開始
-  setTimeout(gameLoop, currentSpeed);
-}
     function initPuyos() {
       const centerX = Math.floor(COLS / 2) - 1;
       currentPuyo = new PuyoPair();
@@ -239,14 +222,14 @@ function initGame() {
       nextPuyo.draw(0, 0);
 
       // メインのぷよと盤面を描画
-for (let y = 0; y < ROWS; y++) {
-  for (let x = 0; x < COLS; x++) {
-    if (grid[y][x]) {
-      grid[y][x].draw(0, 0); // 2 を 0 に変更
-    }
-  }
-}
-currentPuyo.draw(0, 0); // 2 を 0 に変更
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (grid[y][x]) {
+            grid[y][x].draw(2, 0);
+          }
+        }
+      }
+      currentPuyo.draw(2, 0);
 
       // スコアを更新
       document.getElementById('score').textContent = `Score: ${score}`;
@@ -381,12 +364,12 @@ currentPuyo.draw(0, 0); // 2 を 0 に変更
       animateGameOver();
     }
       
-function drawGameOverLine() {
+    function drawGameOverLine() {
   const gameOverY = 2 * BLOCK_SIZE; // 3行目の上
   ctx.strokeStyle = 'red';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(0, gameOverY); // 2 * BLOCK_SIZE を 0 に変更
+  ctx.moveTo(2 * BLOCK_SIZE, gameOverY);
   ctx.lineTo(canvas.width, gameOverY);
   ctx.stroke();
 }
@@ -437,9 +420,11 @@ function drawGameOverLine() {
       }
     });
 
-window.addEventListener('load', initGame);
-      
-// タッチイベントの設定
+initGrid();
+currentPuyo = new PuyoPair();
+nextPuyo = new PuyoPair();
+setTimeout(gameLoop, currentSpeed);
+      // タッチイベントの設定
 let touchStartX = 0;
 let touchStartY = 0;
 let touchEndX = 0;
