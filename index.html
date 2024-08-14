@@ -172,7 +172,7 @@ canvas {
         }
       }
     }
-      
+
     function updateSpeed() {
       const speedLevel = Math.floor(score / 5000);
       speedMultiplier = Math.pow(1.5, speedLevel);
@@ -232,6 +232,7 @@ canvas {
         ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 40);
         ctx.fillText(`Screen Reflesh to ReStart`, canvas.width / 2, canvas.height / 2 + 80);
       }
+        drawGameOverLine();
     }
 
     function applyGravity() {
@@ -350,7 +351,16 @@ canvas {
       gameOverAnimationRow = ROWS - 1;
       animateGameOver();
     }
-
+      
+    function drawGameOverLine() {
+  const gameOverY = 2 * BLOCK_SIZE; // 3行目の上
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(2 * BLOCK_SIZE, gameOverY);
+  ctx.lineTo(canvas.width, gameOverY);
+  ctx.stroke();
+}
     function animateGameOver() {
       if (gameOverAnimationRow >= 0) {
         for (let x = 0; x < COLS; x++) {
