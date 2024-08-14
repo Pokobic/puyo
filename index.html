@@ -8,14 +8,18 @@
     <style>
 body {
     margin: 0;
-    padding: 10px 0 0 0; 
+    padding: 10px 0 0 0;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
     align-items: center;
-    height: 100vh;
     background-color: #f0f0f0;
     font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+#gameContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 canvas {
     border: none;
@@ -23,13 +27,19 @@ canvas {
 }
 #score {
     margin-top: 5px;
+    margin-bottom: 10px;
     font-size: 18px;
     font-weight: bold;
-}    </style>
+}
+    </style>
 </head>
-<body>
+<body style="height: auto; min-height: 100%;">
     <canvas id="gameCanvas" width="360" height="575"></canvas>
     <div id="score">Score: 0</div>
+<div id="gameContainer">
+    <canvas id="gameCanvas" width="360" height="570"></canvas>
+    <div id="score">Score: 0</div>
+</div>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     const initialSpeed = 1000; // ミリ秒単位の初期落下速度
@@ -455,15 +465,14 @@ function handleTouch() {
     draw();
   }
 }
-document.addEventListener('gesturestart', function(event) {
+document.body.addEventListener('touchmove', function(e) {
     e.preventDefault();
-});
-
-document.addEventListener('touchmove', function(event) {
-    if (e.scale !== 1) {
-        e.preventDefault();
-    }
 }, { passive: false });
+
+document.getElementById('gameContainer').addEventListener('touchmove', function(e) {
+    e.preventDefault();
+}, { passive: false });
+      
 // タッチによるスクロールを防止
 document.body.addEventListener('touchmove', function(event) {
   event.preventDefault();
