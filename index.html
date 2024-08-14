@@ -455,11 +455,11 @@ function handleTouch() {
     draw();
   }
 }
-document.addEventListener('gesturestart', function(e) {
+document.addEventListener('gesturestart', function(event) {
     e.preventDefault();
 });
 
-document.addEventListener('touchmove', function(e) {
+document.addEventListener('touchmove', function(event) {
     if (e.scale !== 1) {
         e.preventDefault();
     }
