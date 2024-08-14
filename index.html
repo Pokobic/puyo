@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ぷよ風ゲーム</title>
     <style>
 body {
@@ -454,7 +455,15 @@ function handleTouch() {
     draw();
   }
 }
+document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+});
 
+document.addEventListener('touchmove', function(e) {
+    if (e.scale !== 1) {
+        e.preventDefault();
+    }
+}, { passive: false });
 // タッチによるスクロールを防止
 document.body.addEventListener('touchmove', function(event) {
   event.preventDefault();
